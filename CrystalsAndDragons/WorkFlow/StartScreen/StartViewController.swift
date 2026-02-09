@@ -9,7 +9,7 @@ import UIKit
 
 final class StartViewController: BaseViewController {
 
-    var onStartGame: ((_ rows: Int, _ cols: Int, _ moveLimit: Int) -> Void)?
+    var onStartGame: ((_ rows: Int, _ cols: Int, _ roomCount: Int, _ moveLimit: Int) -> Void)?
     
     private let viewModel = StartViewModel()
 
@@ -135,7 +135,7 @@ final class StartViewController: BaseViewController {
 
         viewModel.startConfig.bind { [weak self] config in
             guard let self, let config else { return }
-            self.onStartGame?(config.rows, config.cols, config.moveLimit)
+            self.onStartGame?(config.rows, config.cols, config.roomCount, config.moveLimit)
             self.viewModel.clearStartConfig()
         }
     }

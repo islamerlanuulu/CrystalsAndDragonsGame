@@ -23,9 +23,10 @@ final class GameViewModel {
     init(
         rows: Int,
         cols: Int,
+        roomCount: Int,
         moveLimit: Int
     ) {
-        let result = LabyrinthGenerator.generate(rows: rows, cols: cols, moveLimit: moveLimit)
+        let result = LabyrinthGenerator.generate(rows: rows, cols: cols, roomCount: roomCount, moveLimit: moveLimit)
         self.labyrinth = result.labyrinth
         self.player = Player(startPosition: result.startPosition, moveLimit: moveLimit)
 
@@ -154,7 +155,7 @@ final class GameViewModel {
     private func refreshRoomState() {
         guard let room = labyrinth.room(at: player.position) else { return }
         let pos = player.position
-        roomTitle.value = "Комната (\(pos.row + 1), \(pos.col + 1))"
+        roomTitle.value = "Комната [\(pos.col + 1), \(pos.row + 1)]"
         movesLeft.value = player.movesLeft
         roomExits.value = room.exits
         roomItems.value = room.items

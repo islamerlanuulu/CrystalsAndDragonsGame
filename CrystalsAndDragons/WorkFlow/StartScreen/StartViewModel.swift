@@ -25,10 +25,10 @@ final class StartViewModel {
         }
 
         let (rows, cols) = Self.calculateGrid(for: roomCount)
-        let moveLimit = rows * cols * 2
+        let moveLimit = roomCount * 2
 
         errorMessage.value = nil
-        startConfig.value = StartConfig(rows: rows, cols: cols, moveLimit: moveLimit)
+        startConfig.value = StartConfig(rows: rows, cols: cols, roomCount: roomCount, moveLimit: moveLimit)
     }
 
     func clearStartConfig() {
@@ -36,19 +36,26 @@ final class StartViewModel {
     }
 
     private static func calculateGrid(for roomCount: Int) -> (rows: Int, cols: Int) {
-        let sqrtVal = Int(Double(roomCount).squareRoot())
-        var bestRows = sqrtVal
-        var bestCols = sqrtVal
+        guard roomCount > 0 else { return (1, 1) }
 
-        if bestRows * bestCols < roomCount {
-            bestCols = sqrtVal + 1
-        }
-        if bestRows * bestCols < roomCount {
-            bestRows = sqrtVal + 1
-        }
+        var bestRows = 1
+        var bestCols = roomCount
+        let limit = Int(Double(roomCount).squareRoot())
 
-        bestRows = max(bestRows, 2)
-        bestCols = max(bestCols, 2)
+        if limit >= 1 {
+            for r in 1...limit {
+                guard roomCount % r == 0 else { continue }
+                let c = roomCount / r
+                let rows = r
+                let cols = c
+                let bestDiff = bestCols - bestRows
+                let currentDiff = cols - rows
+                if currentDiff < bestDiff {
+                    bestRows = rows
+                    bestCols = cols
+                }
+            }
+        }
 
         return (bestRows, bestCols)
     }

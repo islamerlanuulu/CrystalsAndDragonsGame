@@ -14,66 +14,42 @@ struct LabyrinthGenerator {
         let startPosition: Position
     }
 
-    static func generate(rows: Int, cols: Int, moveLimit: Int) -> Result {
+    static func generate(rows: Int, cols: Int, roomCount: Int, moveLimit: Int) -> Result {
         let labyrinth = Labyrinth(rows: rows, cols: cols)
 
-        for pos in labyrinth.allPositions {
+        let selectedPositions = selectConnectedPositions(rows: rows, cols: cols, count: roomCount)
+
+        for pos in selectedPositions {
             labyrinth.setRoom(Room(position: pos), at: pos)
         }
 
-        carveMaze(labyrinth: labyrinth)
+        connectAllNeighbors(labyrinth: labyrinth, positions: selectedPositions)
 
-        addExtraConnections(labyrinth: labyrinth, ratio: 0.15)
-
-        let startPosition = placeItems(labyrinth: labyrinth, moveLimit: moveLimit)
+        let startPosition = placeItems(labyrinth: labyrinth, positions: selectedPositions, moveLimit: moveLimit)
 
         return Result(labyrinth: labyrinth, startPosition: startPosition)
     }
 
-    private static func carveMaze(labyrinth: Labyrinth) {
-        var visited: Set<Position> = []
-        let start = Position(row: 0, col: 0)
-        var stack: [Position] = [start]
-        visited.insert(start)
-
-        while !stack.isEmpty {
-            let current = stack.last!
-            let neighbors = Direction.allCases.compactMap { dir -> (Direction, Position)? in
-                let next = current.moved(to: dir)
-                guard labyrinth.isValid(next), !visited.contains(next) else { return nil }
-                return (dir, next)
-            }.shuffled()
-
-            if let (dir, next) = neighbors.first {
-                labyrinth.room(at: current)?.addExit(dir)
-                labyrinth.room(at: next)?.addExit(dir.opposite)
-                visited.insert(next)
-                stack.append(next)
-            } else {
-                stack.removeLast()
-            }
+    private static func selectConnectedPositions(rows: Int, cols: Int, count: Int) -> [Position] {
+        return (0..<rows).flatMap { r in
+            (0..<cols).map { c in Position(row: r, col: c) }
         }
     }
 
-    private static func addExtraConnections(labyrinth: Labyrinth, ratio: Double) {
-        let total = labyrinth.rows * labyrinth.cols
-        let extraCount = max(1, Int(Double(total) * ratio))
+    private static func connectAllNeighbors(labyrinth: Labyrinth, positions: [Position]) {
+        let positionSet = Set(positions)
 
-        for _ in 0..<extraCount {
-            let pos = Position(
-                row: Int.random(in: 0..<labyrinth.rows),
-                col: Int.random(in: 0..<labyrinth.cols)
-            )
+        for pos in positions {
             guard let room = labyrinth.room(at: pos) else { continue }
-            let directions = Direction.allCases.shuffled()
-            for dir in directions {
+
+            for dir in Direction.allCases {
                 let neighbor = pos.moved(to: dir)
-                guard labyrinth.isValid(neighbor),
-                      !room.hasExit(dir),
-                      let neighborRoom = labyrinth.room(at: neighbor) else { continue }
-                room.addExit(dir)
-                neighborRoom.addExit(dir.opposite)
-                break
+                if positionSet.contains(neighbor),
+                   !room.hasExit(dir),
+                   let neighborRoom = labyrinth.room(at: neighbor) {
+                    room.addExit(dir)
+                    neighborRoom.addExit(dir.opposite)
+                }
             }
         }
     }
@@ -89,6 +65,7 @@ struct LabyrinthGenerator {
             head += 1
 
             guard let room = labyrinth.room(at: current) else { continue }
+            
             for exit in room.exits {
                 let next = current.moved(to: exit)
                 if next == to { return dist + 1 }
@@ -101,20 +78,22 @@ struct LabyrinthGenerator {
         return Int.max
     }
 
-    private static func placeItems(labyrinth: Labyrinth, moveLimit: Int) -> Position {
-        let allPositions = labyrinth.allPositions.shuffled()
+    private static func placeItems(labyrinth: Labyrinth, positions: [Position], moveLimit: Int) -> Position {
         let maxRetries = 100
+        let preferredStart = Position(row: 0, col: 0)
+        let startPosition = positions.contains(preferredStart) ? preferredStart : (positions.first ?? preferredStart)
+        let keyChestCandidates = positions.filter { $0 != startPosition }
 
-        let totalRooms = labyrinth.rows * labyrinth.cols
+        let totalRooms = positions.count
         let foodCount  = max(1, totalRooms / 8)
 
         for _ in 0..<maxRetries {
-            let shuffled = allPositions.shuffled()
-            guard shuffled.count >= 3 else { break }
+            let keyChestPool = keyChestCandidates.shuffled()
+            guard keyChestPool.count >= 2 else { break }
 
-            let start    = shuffled[0]
-            let keyPos   = shuffled[1]
-            let chestPos = shuffled[2]
+            let start    = startPosition
+            let keyPos   = keyChestPool[0]
+            let chestPos = keyChestPool[1]
 
             let distToKey    = bfsDistance(in: labyrinth, from: start, to: keyPos)
             let distToChest  = bfsDistance(in: labyrinth, from: keyPos, to: chestPos)
@@ -127,22 +106,24 @@ struct LabyrinthGenerator {
 
             labyrinth.room(at: chestPos)?.placeItem(Item(type: .chest))
 
-            let remaining = Array(shuffled.dropFirst(3))
+            let remaining = positions.filter { $0 != keyPos && $0 != chestPos }.shuffled()
+            let fallbackPool = remaining.isEmpty ? positions : remaining
             var nextIndex = 0
 
             for _ in 0..<foodCount {
                 let pos = nextIndex < remaining.count
                     ? remaining[nextIndex]
-                    : allPositions.randomElement()!
+                    : fallbackPool.randomElement()!
                 labyrinth.room(at: pos)?.placeItem(Item(type: .food))
                 nextIndex += 1
             }
 
             let decorativeTypes: [ItemType] = [.stone, .mushroom, .bone]
+            
             for type in decorativeTypes {
                 let pos = nextIndex < remaining.count
                     ? remaining[nextIndex]
-                    : allPositions.randomElement()!
+                    : fallbackPool.randomElement()!
                 labyrinth.room(at: pos)?.placeItem(Item(type: type))
                 nextIndex += 1
             }
@@ -150,16 +131,19 @@ struct LabyrinthGenerator {
             return start
         }
 
-        let start = allPositions[0]
-        let keyPos = allPositions.count > 1 ? allPositions[1] : allPositions[0]
-        let chestPos = allPositions.count > 2 ? allPositions[2] : allPositions[0]
+        let start = startPosition
+        let keyPos = keyChestCandidates.first ?? start
+        let chestPos = keyChestCandidates.count > 1 ? keyChestCandidates[1] : keyPos
 
         labyrinth.room(at: keyPos)?.placeItem(Item(type: .key))
         labyrinth.room(at: chestPos)?.placeItem(Item(type: .chest))
 
         let extraTypes: [ItemType] = [.food, .stone, .mushroom, .bone]
+        let remaining = positions.filter { $0 != keyPos && $0 != chestPos }
+        let fallbackPool = remaining.isEmpty ? positions : remaining
+        
         for (i, type) in extraTypes.enumerated() {
-            let pos = allPositions.count > 3 + i ? allPositions[3 + i] : allPositions[0]
+            let pos = i < remaining.count ? remaining[i] : (fallbackPool.randomElement() ?? start)
             labyrinth.room(at: pos)?.placeItem(Item(type: type))
         }
 

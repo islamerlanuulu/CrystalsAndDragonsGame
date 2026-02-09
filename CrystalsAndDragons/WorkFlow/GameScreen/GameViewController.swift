@@ -10,6 +10,7 @@ import UIKit
 final class GameViewController: BaseViewController {
     var rows: Int = 0
     var cols: Int = 0
+    var roomCount: Int = 0
     var moveLimit: Int = 0
     var onGameEnd: ((ResultType) -> Void)?
     
@@ -48,9 +49,10 @@ final class GameViewController: BaseViewController {
     private let inventoryView = InventoryView()
     
     override func setup() {
-        viewModel = GameViewModel(rows: rows, cols: cols, moveLimit: moveLimit)
+        viewModel = GameViewModel(rows: rows, cols: cols, roomCount: roomCount, moveLimit: moveLimit)
         super.setup()
         navigationItem.hidesBackButton = true
+        navigationItem.title = "Комнат: \(roomCount)"
 
         roomView.translatesAutoresizingMaskIntoConstraints = false
         inventoryView.translatesAutoresizingMaskIntoConstraints = false

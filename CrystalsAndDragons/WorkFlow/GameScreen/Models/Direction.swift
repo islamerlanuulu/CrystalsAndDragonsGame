@@ -29,13 +29,13 @@ enum Direction: String, CaseIterable {
     var offset: (dRow: Int, dCol: Int) {
         switch self {
         case .north:
-            return (-1,  0)
+            return (1, 0)
         case .south:
-            return ( 1,  0)
+            return (-1, 0)
         case .east:
-            return ( 0,  1)
+            return (0, 1)
         case .west:
-            return ( 0, -1)
+            return (0, -1)
         }
     }
 

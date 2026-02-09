@@ -21,17 +21,18 @@ final class AppCoordinator {
 
     private func showStart() {
         let vc = StartViewController()
-        vc.onStartGame = { [weak self] rows, cols, moveLimit in
+        vc.onStartGame = { [weak self] rows, cols, roomCount, moveLimit in
             guard let self else { return }
-            self.showGame(rows: rows, cols: cols, moveLimit: moveLimit)
+            self.showGame(rows: rows, cols: cols, roomCount: roomCount, moveLimit: moveLimit)
         }
         navigationController.setViewControllers([vc], animated: false)
     }
 
-    private func showGame(rows: Int, cols: Int, moveLimit: Int) {
+    private func showGame(rows: Int, cols: Int, roomCount: Int, moveLimit: Int) {
         let vc = GameViewController()
         vc.rows = rows
         vc.cols = cols
+        vc.roomCount = roomCount
         vc.moveLimit = moveLimit
         vc.onGameEnd = { [weak self] resultType in
             guard let self else { return }

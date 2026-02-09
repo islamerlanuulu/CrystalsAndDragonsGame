@@ -10,5 +10,6 @@ import Foundation
 struct StartConfig {
     let rows: Int
     let cols: Int
+    let roomCount: Int
     let moveLimit: Int
 }

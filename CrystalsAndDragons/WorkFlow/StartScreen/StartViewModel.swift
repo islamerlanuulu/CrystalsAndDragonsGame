@@ -38,25 +38,13 @@ final class StartViewModel {
     private static func calculateGrid(for roomCount: Int) -> (rows: Int, cols: Int) {
         guard roomCount > 0 else { return (1, 1) }
 
-        var bestRows = 1
-        var bestCols = roomCount
-        let limit = Int(Double(roomCount).squareRoot())
+        var cols = Int(ceil(sqrt(Double(roomCount))))
+        var rows = Int(ceil(Double(roomCount) / Double(cols)))
 
-        if limit >= 1 {
-            for r in 1...limit {
-                guard roomCount % r == 0 else { continue }
-                let c = roomCount / r
-                let rows = r
-                let cols = c
-                let bestDiff = bestCols - bestRows
-                let currentDiff = cols - rows
-                if currentDiff < bestDiff {
-                    bestRows = rows
-                    bestCols = cols
-                }
-            }
+        if rows > cols {
+            swap(&rows, &cols)
         }
 
-        return (bestRows, bestCols)
+        return (rows, cols)
     }
 }

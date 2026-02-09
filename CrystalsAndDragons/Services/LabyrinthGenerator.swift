@@ -31,9 +31,48 @@ struct LabyrinthGenerator {
     }
 
     private static func selectConnectedPositions(rows: Int, cols: Int, count: Int) -> [Position] {
-        return (0..<rows).flatMap { r in
-            (0..<cols).map { c in Position(row: r, col: c) }
+        let totalAvailable = rows * cols
+
+        if count >= totalAvailable {
+            return (0..<rows).flatMap { r in
+                (0..<cols).map { c in Position(row: r, col: c) }
+            }
         }
+
+        var selected: Set<Position> = []
+        var frontier: [Position] = []
+
+        let start = Position(row: 0, col: 0)
+        selected.insert(start)
+
+        for dir in Direction.allCases {
+            let neighbor = start.moved(to: dir)
+            if neighbor.row >= 0 && neighbor.row < rows &&
+               neighbor.col >= 0 && neighbor.col < cols {
+                frontier.append(neighbor)
+            }
+        }
+
+        while selected.count < count && !frontier.isEmpty {
+            let randomIndex = Int.random(in: 0..<frontier.count)
+            let next = frontier.remove(at: randomIndex)
+
+            if selected.contains(next) { continue }
+
+            selected.insert(next)
+
+            for dir in Direction.allCases {
+                let neighbor = next.moved(to: dir)
+                if neighbor.row >= 0 && neighbor.row < rows &&
+                   neighbor.col >= 0 && neighbor.col < cols &&
+                   !selected.contains(neighbor) &&
+                   !frontier.contains(neighbor) {
+                    frontier.append(neighbor)
+                }
+            }
+        }
+
+        return Array(selected)
     }
 
     private static func connectAllNeighbors(labyrinth: Labyrinth, positions: [Position]) {
